@@ -35,10 +35,19 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
-        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ]
     },
     "plugins": [
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Allow OpenBot to use your camera to scan QR codes.",
+          "microphonePermission": "Allow OpenBot to use the microphone to dictate messages."
+        }
+      ],
+      "./plugins/with-webrtc-speaker",
       "./plugins/with-rocketsim",
       "./plugins/with-workspace-bundle-inputs",
       "expo-router",

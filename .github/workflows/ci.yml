@@ -983,6 +983,34 @@ jobs:
           path: .openbot-build/mobile-share-sender-e2e/report.json
           if-no-files-found: ignore
 
+  mobile-codex-live-voice-e2e:
+    # Runs the phone's Codex live voice call session and host adapter against a local server that
+    # implements the live-voice-v1 routes. It needs no phone, host, display or external service.
+    name: Mobile Codex live voice E2E
+    needs: detect
+    if: needs.detect.outputs.surfaces == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Bun
+        uses: ./.github/actions/setup-bun
+        with:
+          install: ignore-scripts
+
+      - name: Run the Codex live voice E2E test
+        run: bun run test:mobile-codex-live-voice
+
+      - name: Upload the Codex live voice E2E report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mobile-codex-live-voice-e2e
+          path: .openbot-build/mobile-codex-live-voice-e2e/report.json
+          if-no-files-found: ignore
+
   api:
     # `check:api` ends with `api:build:check`, the preview build of the Worker. For a pull request
     # from this repository, this job uploads that build. It has no write token, and its only secret
@@ -1065,7 +1093,7 @@ jobs:
     # fails this one.
     name: All required checks pass
     if: always()
-    needs: [detect, check, browser, tests-desktop, signal-e2e, automation-cli-e2e, team-api-routes-e2e, reverse-actions-e2e, provider-fakes-e2e, surfaces, mobile-share-sender-e2e, api, storybook]
+    needs: [detect, check, browser, tests-desktop, signal-e2e, automation-cli-e2e, team-api-routes-e2e, reverse-actions-e2e, provider-fakes-e2e, surfaces, mobile-share-sender-e2e, mobile-codex-live-voice-e2e, api, storybook]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -1091,7 +1119,7 @@ jobs:
     # `apps/auth-api`, which `api` already covers: mobile, the site router, the
     # team client and the remote stack all consume the account API, so a red
     # Surfaces is the signal that this deploy is the thing about to break them.
-    needs: [check, browser, tests-desktop, signal-e2e, automation-cli-e2e, team-api-routes-e2e, reverse-actions-e2e, provider-fakes-e2e, api, storybook, surfaces, mobile-share-sender-e2e]
+    needs: [check, browser, tests-desktop, signal-e2e, automation-cli-e2e, team-api-routes-e2e, reverse-actions-e2e, provider-fakes-e2e, api, storybook, surfaces, mobile-share-sender-e2e, mobile-codex-live-voice-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: cloudflare-production

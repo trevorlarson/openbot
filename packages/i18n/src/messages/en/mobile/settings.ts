@@ -271,6 +271,13 @@ export const messages = defineMessages("mobile.settings", {
   "mobile.settings.voice.pause.footer":
     "In a voice conversation, OpenBot sends your words when it recognizes no new words for this long. Noise without words does not keep it listening. Choose a longer pause if you speak slowly or stop to think.",
   "mobile.settings.voice.pause.seconds": "{seconds} s",
+  "mobile.settings.voice.codex.title": "Live voice",
+  "mobile.settings.voice.codex.enable": "Codex live voice",
+  "mobile.settings.voice.codex.automatic": "Automatic",
+  "mobile.settings.voice.codex.footer":
+    "Voice conversations with any agent use OpenAI live voice with your Codex sign-in. Your voice, your requests and the agent's replies go to OpenAI.",
+  "mobile.settings.voice.codex.unavailable":
+    "This version of the app cannot use Codex live voice. Update the app to turn it on.",
   "mobile.settings.voice.speed.title": "Reply speed",
   "mobile.settings.voice.speed.footer": "The speed of replies that OpenBot reads aloud, also in a voice conversation.",
   "mobile.settings.voice.speed.value": "{speed}×",

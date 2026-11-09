@@ -643,6 +643,15 @@ sent to the agent as a message. The phone then reads the agent's reply aloud wit
 
 The chosen voice settings are kept on the phone. OpenBot does not store the reply audio.
 
+When you turn on **Codex live voice** in **Settings → Voice**, a voice conversation with an agent
+in a chat uses Codex live voice instead of the recognizer and reply voice above. It is off by default.
+The phone asks the agent's server to start a realtime voice session with OpenAI through the server's
+own Codex sign-in, so the phone holds no OpenAI key. The microphone audio then goes from the phone to
+OpenAI, and the spoken reply comes back, until you leave the chat or the app. What the server sends
+to OpenAI and keeps is the same as for the Voice pane on desktop, described in
+**Other network connections**. The phone keeps the setting and the chosen voice. It does not save
+audio. Messages from the call can appear in the encrypted recent-chat copy described above.
+
 ## Company sign-in
 
 A server owner can connect the company's OpenID Connect provider, such as Microsoft Entra ID, Okta

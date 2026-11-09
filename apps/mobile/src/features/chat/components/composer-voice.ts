@@ -1,4 +1,4 @@
-import type { MobileTextKey, MobileTranslate } from "@openbot/i18n/mobile";
+import type { AppMobileMessages, MobileTextKey, MobileTranslate } from "@openbot/i18n/mobile";
 import type { SharedValue } from "react-native-reanimated";
 import type { LiveConversationPhase } from "../model/live-conversation";
 import type { LiveConversation } from "./use-live-conversation";
@@ -44,6 +44,23 @@ const LIVE_PHASES = {
   offline: "mobile.chat.liveVoice.phase.offline",
 } as const satisfies Record<LiveConversationPhase, MobileTextKey>;
 
+/** The words of a live conversation that differ between a dictation-based one and Codex live voice. */
+const LIVE_LABELS = {
+  dictation: {
+    start: "mobile.chat.liveVoice.start",
+    status: "mobile.chat.liveVoice.status",
+    interrupt: "mobile.chat.liveVoice.interrupt",
+  },
+  codex: {
+    start: "mobile.chat.liveVoice.codex.start",
+    status: "mobile.chat.liveVoice.codex.status",
+    interrupt: "mobile.chat.liveVoice.codex.silence",
+  },
+} as const satisfies Record<
+  string,
+  { start: MobileTextKey; interrupt: MobileTextKey; status: keyof AppMobileMessages }
+>;
+
 /** Dictation with review: Stop, then Cancel, Continue and Send. Nothing is sent before Send. */
 export function dictationVoice(voice: VoiceMode, t: MobileTranslate): ComposerVoice {
   const listening = voice.stage === "listening";
@@ -84,11 +101,23 @@ export function dictationVoice(voice: VoiceMode, t: MobileTranslate): ComposerVo
  * A live conversation, as the voice pane on desktop, drawn as the call bar: Mute mutes and unmutes the
  * microphone, End closes the conversation, and Interrupt stops the agent's reply or the wait for it.
  */
-export function liveVoice(live: LiveConversation, name: string, t: MobileTranslate): ComposerVoice {
+export function liveVoice(
+  live: LiveConversation,
+  name: string,
+  t: MobileTranslate,
+  kind: keyof typeof LIVE_LABELS,
+): ComposerVoice {
+  const labels = LIVE_LABELS[kind];
   // "Speak now" only once the recognizer hears: while the microphone opens, words would be lost.
   const opening = live.phase === "listening" && !live.muted && !live.micOpen;
   const hearing = live.phase === "listening" && !live.muted && !live.exit && live.micOpen;
   const replying = live.phase === "thinking" || live.phase === "speaking";
+  // Silencing Codex live voice only mutes the reply, so it says that the agent's task goes on.
+  const idleCaption = hearing
+    ? t("mobile.chat.liveVoice.speakNow")
+    : kind === "codex" && replying
+      ? t("mobile.chat.liveVoice.codex.silenceHint")
+      : "";
   return {
     available: live.available,
     open: live.open,
@@ -97,7 +126,7 @@ export function liveVoice(live: LiveConversation, name: string, t: MobileTransla
     level: live.level,
     presence: live.presence,
     start: live.start,
-    startLabel: t("mobile.chat.liveVoice.start"),
+    startLabel: t(labels.start),
     center: {
       label: t(live.muted ? "mobile.chat.liveVoice.unmute" : "mobile.chat.liveVoice.mute"),
       glyph: live.muted
@@ -113,13 +142,13 @@ export function liveVoice(live: LiveConversation, name: string, t: MobileTransla
     },
     leading: { label: t("mobile.chat.liveVoice.end"), onPress: live.end },
     trailing: {
-      label: t("mobile.chat.liveVoice.interrupt"),
+      label: t(labels.interrupt),
       icon: "interrupt",
       enabled: replying,
       onPress: live.interrupt,
     },
     bar: {
-      title: t("mobile.chat.liveVoice.status", {
+      title: t(labels.status, {
         name,
         phase: t(
           live.muted && live.phase === "listening"
@@ -130,7 +159,7 @@ export function liveVoice(live: LiveConversation, name: string, t: MobileTransla
         ),
       }),
       // An error says why the conversation waits; otherwise the words heard, or the part read.
-      caption: live.error ?? (live.caption || (hearing ? t("mobile.chat.liveVoice.speakNow") : "")),
+      caption: live.error ?? (live.caption || idleCaption),
     },
   };
 }

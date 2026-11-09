@@ -191,6 +191,7 @@ import type { BrowserViewBridgeEvent, RemoteBrowserViewSession } from "@/feature
 import type { MobileChannelStore } from "@/features/channels/model/channel-store";
 import type { MessageFileTarget } from "@/features/chat/model/message-file-target";
 import type { ProviderAdmin } from "@/features/servers/model/provider-admin";
+import type { CodexLiveHost } from "@/features/voice/model/codex-live-session";
 import type { RemoteDesktopConnection } from "@/features/workspace/components/remote-team-transport";
 import type { MobileConversationStore } from "./conversation-store";
 import type { LiveWorkspaceStore } from "./live-workspace-store";
@@ -770,8 +771,12 @@ export interface MobileWorkspaceContextValue {
   canReadServerStorage: (serverId: string) => boolean;
   /** True when the host advertises `remote-desktop`. The host decides which members it lets in. */
   canControlComputer: (serverId: string) => boolean;
+  /** The host can start Codex live voice calls. */
+  canUseLiveVoice: (serverId: string) => boolean;
   /** The connected peer's path for the remote desktop viewer, or null while the server is not connected. */
   remoteDesktopConnection: (serverId: string) => RemoteDesktopConnection | null;
+  /** A voice port bound to the current authenticated connection; null while unsupported or offline. */
+  liveVoiceHost: (serverId: string) => CodexLiveHost | null;
   /** Every location on the host, its agents, its largest chats and its stored files. */
   loadServerStorage: (serverId: string, force?: boolean) => Promise<StorageUsage>;
   /** Owners and admins only; the host refuses a member. */
@@ -1099,6 +1104,7 @@ export type MobileWorkspaceCapabilityCheck =
   | "canUseWorkflowChats"
   | "canReadServerStorage"
   | "canControlComputer"
+  | "canUseLiveVoice"
   | "canSetAgentNotificationLevel";
 
 type MobileWorkspaceStateKey =

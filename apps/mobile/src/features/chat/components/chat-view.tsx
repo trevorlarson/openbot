@@ -43,6 +43,7 @@ import {
   presentChatMessages,
 } from "@/features/chat/model/chat-messages";
 import { finishedTurnSummaries, type TurnStepsSummary } from "@/features/chat/model/turn-thinking";
+import { useCodexLiveVoice } from "@/features/voice/components/use-codex-live-voice";
 import { replyVoiceReady } from "@/features/voice/model/reply-voice";
 import { ConnectionStatus } from "@/features/workspace/components/connection-status";
 import { useTurnStepLines } from "@/features/workspace/components/use-agent-activity";
@@ -657,12 +658,25 @@ export function ChatView({
     outboxMessages,
     send: (text) => (writable ? deliver(text, null, []) : null),
   });
+  const codexLive = useCodexLiveVoice({
+    enabled: isFocused && writable,
+    online: serverOnline,
+    focused: isFocused,
+    foreground: foregroundVisit,
+    serverId: target.serverId,
+    agentId: target.kind === "agent" ? target.id : null,
+  });
+  // Codex live voice, when it is on, replaces the voice conversation of dictation and replies. A
+  // settings change does not replace the controls of a conversation that is already open.
+  const isCodex = codexLive.open || (!live.open && codexLive.available);
+  const activeLive = isCodex ? codexLive : live;
+
   // The agent who speaks in a voice conversation: the agent of the chat, or the channel's leader, who
   // gives out the channel's tasks.
   const voiceAgent =
     target.kind === "agent"
       ? target
-      : (target.members.find((member) => member.id === (live.speakerId ?? channelLeadAgentId)) ?? null);
+      : (target.members.find((member) => member.id === (activeLive.speakerId ?? channelLeadAgentId)) ?? null);
   // Not gated on `appActive`. Notification Center and other system overlays make iOS report the app
   // inactive, and a request must stay with its typed value. It goes when the app leaves.
   const showBrowserRequests = serverOnline && foregroundVisit && isFocused && !readOnly;
@@ -671,14 +685,14 @@ export function ChatView({
   // With no voice ready, the tap opens Settings > Voice, where the user downloads Supertonic 3 or adds
   // an ElevenLabs key.
   const composerVoice: ComposerVoice | undefined =
-    live.available || live.open
+    activeLive.available || activeLive.open
       ? {
-          ...liveVoice(live, voiceAgent?.name ?? target.name, t),
-          start: () => (replyVoiceReady() ? live.start() : router.push("/settings/voice")),
+          ...liveVoice(activeLive, voiceAgent?.name ?? target.name, t, isCodex ? "codex" : "dictation"),
+          start: () => (isCodex || replyVoiceReady() ? activeLive.start() : router.push("/settings/voice")),
         }
       : undefined;
   // A live conversation keeps the chat in view and turns the composer into a call bar.
-  const voiceOpen = live.open;
+  const voiceOpen = activeLive.open;
   const dictating = dictation.active;
   // A password or a code is typed where the composer is, so the screen has one field. The voice
   // mode, dictation and the attachment card keep the composer until they close: replacing it would
@@ -751,9 +765,9 @@ export function ChatView({
   useEffect(() => {
     voiceOpenValue.set(voiceOpen || dictating);
   }, [voiceOpen, dictating, voiceOpenValue]);
-  const voiceBack = useRef(live.end);
+  const voiceBack = useRef(activeLive.end);
   useEffect(() => {
-    voiceBack.current = live.open ? live.end : dictation.finish;
+    voiceBack.current = activeLive.open ? activeLive.end : dictation.finish;
   });
   const leaveVoiceMode = useCallback(() => voiceBack.current(), []);
   const edgeBackGesture = useMemo(

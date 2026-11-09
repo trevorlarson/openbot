@@ -42,6 +42,7 @@ import { HOST_UPDATE_CAPABILITY } from "@openbot/contracts/team-protocol/host-up
 import { HOSTED_SITES_CAPABILITY } from "@openbot/contracts/team-protocol/hosted-sites-v1";
 import { INSTANCE_TRANSFER_CAPABILITY } from "@openbot/contracts/team-protocol/instance-transfer-v1";
 import { LIVE_ACTIVITY_PUSH_CAPABILITY } from "@openbot/contracts/team-protocol/live-activity-push-v1";
+import { LIVE_VOICE_CAPABILITY, LIVE_VOICE_EVENT } from "@openbot/contracts/team-protocol/live-voice-v1";
 import { LOCAL_SERVERS_CAPABILITY } from "@openbot/contracts/team-protocol/local-servers-v1";
 import { ONEPASSWORD_CONNECTOR_CAPABILITY } from "@openbot/contracts/team-protocol/onepassword-connector-v1";
 import { PASSWORD_MANAGERS_CAPABILITY } from "@openbot/contracts/team-protocol/password-managers-v1";
@@ -129,6 +130,7 @@ import { setSyncedNotificationLevels } from "@/features/settings/model/notificat
 import { ShareExtensionSync } from "@/features/share/share-extension-sync";
 import { fetch } from "@/features/support/model/logged-fetch";
 import { supportLog } from "@/features/support/model/support-log";
+import { createCodexLiveHosts } from "@/features/voice/model/codex-live-host";
 import type { RemoteTeamTransportRef } from "@/features/workspace/components/remote-team-transport";
 import {
   ServerConnection,
@@ -346,6 +348,10 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
     [session.apiUrl, session.sessionToken, session.user.id, session.host],
   );
   const connections = useRef(new Map<string, ServerConnectionHandle>());
+  const [liveVoiceHosts] = useState(() =>
+    createCodexLiveHosts((serverId) => connections.current.get(serverId)?.client ?? null),
+  );
+  useEffect(() => () => liveVoiceHosts.dispose(), [liveVoiceHosts]);
   const [connectionWaits] = useState(() => new ConnectionWaits());
   const loadGeneration = useRef(0);
   const directoryGeneration = useRef(0);
@@ -1252,11 +1258,15 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
     ],
   );
 
-  const registerConnection = useCallback((hostId: string, handle: ServerConnectionHandle | null) => {
-    if (handle) connections.current.set(hostId, handle);
-    else connections.current.delete(hostId);
-    if (handle && quietStarts.current.delete(hostId)) handle.quietStart();
-  }, []);
+  const registerConnection = useCallback(
+    (hostId: string, handle: ServerConnectionHandle | null) => {
+      if (connections.current.get(hostId)?.client !== handle?.client) liveVoiceHosts.invalidate(hostId);
+      if (handle) connections.current.set(hostId, handle);
+      else connections.current.delete(hostId);
+      if (handle && quietStarts.current.delete(hostId)) handle.quietStart();
+    },
+    [liveVoiceHosts],
+  );
   const wakeHostedServer = useMemo(
     () =>
       createHostedServerWake((hostId) =>
@@ -1360,6 +1370,7 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
   const [recoveryCountdowns] = useState(createRecoveryCountdowns);
   const handleConnectionStatus = useCallback(
     (hostId: string, status: RemoteRecoveryStatus, failure: RemoteConnectionFailure | null, resuming: boolean) => {
+      if (status.phase !== "online") liveVoiceHosts.invalidate(hostId);
       recoveryCountdowns.publish(hostId, { status, message: remoteRecoveryMessage(status, failure?.message ?? null) });
       if (status.phase === "connecting") limitFirstConnection(hostId);
       setServers((current) => {
@@ -1383,7 +1394,7 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
       wakeAttempts.current.set(hostId, status.attempt);
       wakeSelectedServer(hostId);
     },
-    [recoveryCountdowns, wakeSelectedServer, connectionWaits, limitFirstConnection],
+    [recoveryCountdowns, wakeSelectedServer, connectionWaits, limitFirstConnection, liveVoiceHosts],
   );
   // The next retry of an offline server can be 30 seconds away, so a server starts when it is selected.
   useEffect(() => {
@@ -1480,6 +1491,10 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
         return next === previous ? current : { ...current, [serverId]: next };
       });
       applyBrowserEvent(liveState, serverId, event);
+      if (event.type === LIVE_VOICE_EVENT) {
+        liveVoiceHosts.event(serverId, event);
+        return;
+      }
       if (event.type === "sidebar-layout-changed") {
         applySidebarLayout(serverId, event.layout);
         return;
@@ -1628,6 +1643,7 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
       queryScope,
       applyConversationReads,
       applyHostSidebarPins,
+      liveVoiceHosts,
     ],
   );
 
@@ -1748,6 +1764,11 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
       ...workflows,
       openBrowserView: browser.openBrowserView,
       remoteDesktopConnection: (serverId) => connections.current.get(serverId)?.client ?? null,
+      liveVoiceHost: (serverId) =>
+        serversRef.current.some((server) => server.id === serverId && showsOnline(server)) &&
+        hasCapability(serverCapabilities.current, serverId, LIVE_VOICE_CAPABILITY)
+          ? liveVoiceHosts.host(serverId)
+          : null,
       controlBrowserTab: browser.controlBrowserTab,
       mutateSidebarLayout: async (serverId, action) => {
         requireCapability(
@@ -2303,6 +2324,7 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
     applyHostColors,
     pushSidebarPins,
     preferenceStore,
+    liveVoiceHosts,
   ]);
 
   const activeServer = useMemo(

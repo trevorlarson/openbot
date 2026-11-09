@@ -1,4 +1,11 @@
-import { isSpeechSpeed, isSpeechVoice, type SpeechSpeed, type SpeechVoice } from "@openbot/contracts/ipc";
+import {
+  type CodexLiveVoice,
+  isCodexLiveVoice,
+  isSpeechSpeed,
+  isSpeechVoice,
+  type SpeechSpeed,
+  type SpeechVoice,
+} from "@openbot/contracts/ipc";
 import { isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
@@ -38,6 +45,8 @@ export interface ElevenLabsVoice {
 }
 
 interface VoiceSettings {
+  codexLiveEnabled: boolean;
+  codexLiveVoice: CodexLiveVoice | null;
   engine: VoiceEngine;
   recognition: RecognitionEngine;
   supertonicVoice: SpeechVoice;
@@ -48,6 +57,8 @@ interface VoiceSettings {
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
+  codexLiveEnabled: false,
+  codexLiveVoice: null,
   engine: "supertonic",
   recognition: "system",
   supertonicVoice: "F1",
@@ -78,6 +89,8 @@ function decodeSettings(raw: string | null): VoiceSettings {
   if (!isDynamicRecord(value)) return DEFAULT_SETTINGS;
   const voice = value.elevenLabsVoice;
   return {
+    codexLiveEnabled: value.codexLiveEnabled === true,
+    codexLiveVoice: isCodexLiveVoice(value.codexLiveVoice) ? value.codexLiveVoice : null,
     engine: value.engine === "elevenlabs" ? "elevenlabs" : "supertonic",
     recognition: isRecognitionEngine(value.recognition) ? value.recognition : DEFAULT_SETTINGS.recognition,
     supertonicVoice: isSpeechVoice(value.supertonicVoice) ? value.supertonicVoice : DEFAULT_SETTINGS.supertonicVoice,
@@ -108,11 +121,29 @@ export async function loadVoiceSettings(): Promise<void> {
 
 /** Applies at once, also when storage fails; the caller reports the failure. */
 export async function saveVoiceSettings(change: Partial<VoiceSettings>): Promise<void> {
-  const { engine, recognition, supertonicVoice, elevenLabsVoice, speed, turnPauseMs } = {
+  const {
+    codexLiveEnabled,
+    codexLiveVoice,
+    engine,
+    recognition,
+    supertonicVoice,
+    elevenLabsVoice,
+    speed,
+    turnPauseMs,
+  } = {
     ...useVoiceSettings.getState(),
     ...change,
   };
-  const settings: VoiceSettings = { engine, recognition, supertonicVoice, elevenLabsVoice, speed, turnPauseMs };
+  const settings: VoiceSettings = {
+    codexLiveEnabled,
+    codexLiveVoice,
+    engine,
+    recognition,
+    supertonicVoice,
+    elevenLabsVoice,
+    speed,
+    turnPauseMs,
+  };
   useVoiceSettings.setState(settings);
   await SecureStore.setItemAsync(SETTINGS_KEY, JSON.stringify(settings));
 }

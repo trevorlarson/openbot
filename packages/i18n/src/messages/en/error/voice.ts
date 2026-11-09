@@ -35,6 +35,7 @@ export const messages = defineMessages("error.voice", {
   "error.voice.live.disconnected": "Live voice disconnected.",
   "error.voice.live.signIn": "Sign in to Codex with your ChatGPT account to use live voice.",
   "error.voice.live.off": "Codex live voice is off. Turn it on in Settings → Voice.",
+  "error.voice.live.microphoneDenied": "Allow OpenBot to use the microphone in Settings to start live voice.",
   // The user's own voice server.
   "error.voice.server.routeOff": "The voice server is not set up for this. Check Settings → Voice.",
   "error.voice.server.keyRefused": "{host} refused the API key.",

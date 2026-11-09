@@ -17,6 +17,7 @@ import {
 } from "@/features/settings/components/settings-content";
 import { haptics } from "@/shared/lib/haptics";
 import { currentText, useText } from "@/shared/lib/text";
+import { CodexLiveSettingsSection } from "../components/codex-live-settings-section";
 import { DictationLanguageSection } from "../components/dictation-language-section";
 import { PauseSlider } from "../components/pause-slider";
 import { useVoicePreview } from "../components/use-voice-preview";
@@ -518,10 +519,19 @@ export function VoiceSettingsScreen() {
     shownEngine.current = engine;
     stopPreview.current();
   }, [engine]);
+  const codexLive = <CodexLiveSettingsSection onError={showError} />;
+  const failure =
+    error || preview.error ? (
+      <Typography.Paragraph accessibilityRole="alert" type="body-xs" className="px-4 text-danger-text">
+        {error ?? preview.error}
+      </Typography.Paragraph>
+    ) : null;
   if (!speechNative && !layoutPreview)
     return (
       <SettingsContent>
         <SettingsNote>{t("mobile.settings.voice.unavailable")}</SettingsNote>
+        {codexLive}
+        {failure}
       </SettingsContent>
     );
   const speaking = (
@@ -542,6 +552,8 @@ export function VoiceSettingsScreen() {
         {speaking}
         <DictationLanguageSection />
         <TurnPauseSection onError={showError} />
+        {codexLive}
+        {failure}
       </SettingsContent>
     );
   return (
@@ -572,11 +584,8 @@ export function VoiceSettingsScreen() {
       ) : (
         speaking
       )}
-      {error || preview.error ? (
-        <Typography.Paragraph accessibilityRole="alert" type="body-xs" className="px-4 text-danger-text">
-          {error ?? preview.error}
-        </Typography.Paragraph>
-      ) : null}
+      {codexLive}
+      {failure}
     </SettingsContent>
   );
 }
